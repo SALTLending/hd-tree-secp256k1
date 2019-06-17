@@ -54,7 +54,6 @@ import           Data.ByteString                ( ByteString )
 import qualified Data.ByteString               as BS
 import qualified Data.ByteString.Base58        as B58
 import           Data.Either                    ( fromRight )
-import           Data.Monoid
 import           Data.Serialize
 import           Data.Word                      ( Word32 )
 
