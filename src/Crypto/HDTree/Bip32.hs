@@ -55,6 +55,7 @@ import qualified Data.ByteString               as BS
 import qualified Data.ByteString.Base58        as B58
 import           Data.Either                    ( fromRight )
 import           Data.Serialize
+import           Data.Monoid
 import           Data.Word                      ( Word32 )
 
 import           Crypto.HDTree.Bip32.DerivationPath
@@ -69,8 +70,10 @@ ckdPriv :: PrivateKey -> ChainCode -> Index -> Maybe (PrivateKey, ChainCode)
 ckdPriv sPar cPar idx | isHardened idx = go hardened
                       | otherwise      = go standard
   where
-    hardened = hmac (ser256 $ getChainCode cPar) ("\x00" <> getPrivKey sPar <> ser32 (getIndex idx))
-    standard = hmac (ser256 $ getChainCode cPar) (serP (derivePublicKey sPar) <> ser32 (getIndex idx))
+    hardened = hmac (ser256 $ getChainCode cPar)
+                    ("\x00" <> getPrivKey sPar <> ser32 (getIndex idx))
+    standard = hmac (ser256 $ getChainCode cPar)
+                    (serP (derivePublicKey sPar) <> ser32 (getIndex idx))
     go :: HMAC SHA512 -> Maybe (PrivateKey, ChainCode)
     go hash = do
         let i  = BA.convert $ hmacGetDigest hash
@@ -85,7 +88,8 @@ ckdPub :: PublicKey -> ChainCode -> Index -> Maybe (PublicKey, ChainCode)
 ckdPub kPar cPar idx | isHardened idx = Nothing
                      | otherwise      = go standard
   where
-    standard = hmac (ser256 $ getChainCode cPar) (serP kPar <> ser32 (getIndex idx))
+    standard =
+        hmac (ser256 $ getChainCode cPar) (serP kPar <> ser32 (getIndex idx))
     go :: HMAC SHA512 -> Maybe (PublicKey, ChainCode)
     go hash = do
         let i  = BA.convert $ hmacGetDigest hash
@@ -99,10 +103,13 @@ ckdPub kPar cPar idx | isHardened idx = Nothing
 neuter :: XPriv -> XPub
 neuter = over extKey derivePublicKey
 
-ckdDiagStandard :: PrivateKey -> ChainCode -> Index -> Maybe (PublicKey, ChainCode)
-ckdDiagStandard sPar cPar idx = if isHardened idx then Nothing else ckdPub (derivePublicKey sPar) cPar idx
+ckdDiagStandard
+    :: PrivateKey -> ChainCode -> Index -> Maybe (PublicKey, ChainCode)
+ckdDiagStandard sPar cPar idx =
+    if isHardened idx then Nothing else ckdPub (derivePublicKey sPar) cPar idx
 
-ckdDiagHardened :: PrivateKey -> ChainCode -> Index -> Maybe (PublicKey, ChainCode)
+ckdDiagHardened
+    :: PrivateKey -> ChainCode -> Index -> Maybe (PublicKey, ChainCode)
 ckdDiagHardened sPar cPar = fmap (_1 %~ derivePublicKey) . ckdPriv sPar cPar
 
 toXAddress :: (MagicMain s, Serialize s) => Extended s -> ByteString
@@ -145,23 +152,37 @@ derivePathPub xp (Path []      ) = Just xp
 derivePathPub xp (Path (i : is)) = if isHardened i
     then Nothing
     else
-        let incDepth             = extDepth %~ (+ 1)
-            setParentFingerprint = extParentFingerprint .~ fingerprint (xp ^. extKey)
-            setChildNumber       = extChildNumber .~ getIndex i
+        let incDepth = extDepth %~ (+ 1)
+            setParentFingerprint =
+                extParentFingerprint .~ fingerprint (xp ^. extKey)
+            setChildNumber = extChildNumber .~ getIndex i
         in  do
                 (k, c) <- ckdPub (xp ^. extKey) (xp ^. extChainCode) i
-                let xp' = incDepth . setParentFingerprint . setChildNumber . set extKey k . set extChainCode c $ xp
+                let xp' =
+                        incDepth
+                            . setParentFingerprint
+                            . setChildNumber
+                            . set extKey       k
+                            . set extChainCode c
+                            $ xp
                 derivePathPub xp' (Path is)
 
 derivePathPriv :: XPriv -> Path -> Maybe XPriv
 derivePathPriv xp (Path []) = Just xp
 derivePathPriv xp (Path (i : is)) =
     let incDepth             = extDepth %~ (+ 1)
-        setParentFingerprint = extParentFingerprint .~ fingerprint (derivePublicKey $ xp ^. extKey)
-        setChildNumber       = extChildNumber .~ getIndex i
+        setParentFingerprint = extParentFingerprint
+            .~ fingerprint (derivePublicKey $ xp ^. extKey)
+        setChildNumber = extChildNumber .~ getIndex i
     in  do
             (k, c) <- ckdPriv (xp ^. extKey) (xp ^. extChainCode) i
-            let xp' = incDepth . setParentFingerprint . setChildNumber . set extKey k . set extChainCode c $ xp
+            let xp' =
+                    incDepth
+                        . setParentFingerprint
+                        . setChildNumber
+                        . set extKey       k
+                        . set extChainCode c
+                        $ xp
             derivePathPriv xp' (Path is)
 
 hash160 :: ByteString -> Digest RIPEMD160
@@ -171,4 +192,6 @@ hash256 :: ByteString -> Digest SHA256
 hash256 = hashWith SHA256 . hashWith SHA256
 
 fingerprint :: PublicKey -> Word32
-fingerprint = fromRight err . decode . BS.take 4 . BA.convert . hash160 . encode where err = error "unreachable"
+fingerprint =
+    fromRight err . decode . BS.take 4 . BA.convert . hash160 . encode
+    where err = error "unreachable"
