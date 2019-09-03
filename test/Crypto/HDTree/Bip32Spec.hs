@@ -4,7 +4,6 @@ module Crypto.HDTree.Bip32Spec (spec) where
 import qualified Data.ByteString as BS
 
 import Test.Hspec
-import Test.QuickCheck
 import Control.Applicative
 import Crypto.HDTree.Bip32
 import qualified Data.ByteString.Base16 as B16

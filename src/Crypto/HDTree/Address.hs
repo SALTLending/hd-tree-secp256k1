@@ -48,6 +48,12 @@ instance Show DashAddr where
 instance Read DashAddr where
     readsPrec i s = filter (isValidDashAddr . fst) [(DashAddr x, y) | (x, y) <- readsPrec i s]
 
+newtype XrpAddr = XrpAddr { unXrpAddr :: ByteString } deriving (Eq)
+instance Show XrpAddr where
+  show = B8.unpack . unXrpAddr
+instance Read XrpAddr where
+  readsPrec i s = filter (isValidXrpAccountAddr . fst) [(XrpAddr x, y) | (x, y) <- readsPrec i s]
+
 getEthAddress :: PublicKey -> EthAddr
 getEthAddress = ethChecksum . getLowerEthAddress
 
@@ -142,6 +148,11 @@ base58check v d =
   B58.encodeBase58 B58.bitcoinAlphabet $ encode v <> BA.convert d <> checksum
   where checksum = BS.take 4 . BA.convert . hash256 $ encode v <> BA.convert d
 
+rippleBase58check :: HashAlgorithm a => Word8 -> Digest a -> ByteString
+rippleBase58check v d =
+  B58.encodeBase58 B58.rippleAlphabet $ encode v <> BA.convert d <> checksum
+  where checksum = BS.take 4 . BA.convert . hash256 $ encode v <> BA.convert d
+  
 verifyBtcChecksum :: BtcAddr -> Bool
 verifyBtcChecksum addr = case (payload', checksum') of
   (Nothing, _      ) -> False
@@ -194,6 +205,19 @@ verifyDashChecksum addr = case (payload', checksum') of
   payload'  = BS.take 21 <$> decoded
   checksum' = BS.drop 21 <$> decoded
 
+verifyXrpChecksum :: XrpAddr -> Bool
+verifyXrpChecksum addr = case (payload', checksum') of
+  (Nothing, _      ) -> False
+  (_      , Nothing) -> False
+  (Just payload, Just checksum) ->
+    BS.take 4 (BA.convert . hash256 $ payload) == checksum
+ where
+  b58decode = fmap leftpad . B58.decodeBase58 B58.rippleAlphabet
+  leftpad bs = BS.replicate (25 - BS.length bs) 0 <> bs
+  decoded   = b58decode $ unXrpAddr addr
+  payload'  = BS.take 21 <$> decoded
+  checksum' = BS.drop 21 <$> decoded
+
 isValidBtcAddr :: BtcAddr -> Bool
 isValidBtcAddr =
   lengthInBounds <&&> isBase58 <&&> verifyBtcChecksum <&&> validVersionByte
@@ -204,7 +228,6 @@ isValidBtcAddr =
   isBase58       = all isB58Char . B8.unpack . unBtcAddr
   validVersionByte =
     flip elem ("132mn" :: String) . head . B8.unpack . unBtcAddr
-
 
 isValidLtcAddr :: LtcAddr -> Bool
 isValidLtcAddr =
@@ -238,6 +261,17 @@ isValidDashAddr =
   isBase58       = all isB58Char . B8.unpack . unDashAddr
   validVersionByte =
     flip elem ("Xy789" :: String) . head . B8.unpack . unDashAddr
+
+isValidXrpAccountAddr :: XrpAddr -> Bool
+isValidXrpAccountAddr = 
+  lengthInBounds <&&> isBase58 <&&> verifyXrpChecksum <&&> validVersionByte
+  where
+   (<&&>)         = liftA2 (&&)
+   lengthInBounds = ((>= 26) <&&> (<= 35)) . BS.length . unXrpAddr
+   isB58Char      = flip elem . B8.unpack $ B58.unAlphabet B58.rippleAlphabet
+   isBase58       = all isB58Char . B8.unpack . unXrpAddr
+   validVersionByte =
+     flip elem ("r" :: String) . head . B8.unpack . unXrpAddr
 
 ltcConvertTo3Address :: LtcAddr -> Maybe LtcAddr
 ltcConvertTo3Address addr = do
