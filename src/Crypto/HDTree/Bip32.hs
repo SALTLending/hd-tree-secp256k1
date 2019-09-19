@@ -13,6 +13,8 @@ module Crypto.HDTree.Bip32
     , neuter
     , toXAddress
     , fromXAddress
+    , toRAddress
+    , fromRAddress
     , derivePathPriv
     , derivePathPub
     , derivePublicKey
@@ -121,6 +123,19 @@ toXAddress xpub =
 fromXAddress :: (MagicMain s, Serialize s) => ByteString -> Maybe (Extended s)
 fromXAddress addr =
     let b58 = B58.decodeBase58 B58.bitcoinAlphabet
+    in  b58 addr >>= \x -> case decode . BS.take 78 $ x of
+            Left  _ -> Nothing
+            Right a -> Just a
+
+toRAddress :: (MagicMain s, Serialize s) => Extended s -> ByteString
+toRAddress xpub =
+    let b58      = B58.encodeBase58 B58.rippleAlphabet
+        checksum = BS.take 4 . BA.convert . hash256 $ encode xpub
+    in  b58 $ encode xpub <> checksum
+
+fromRAddress :: (MagicMain s, Serialize s) => ByteString -> Maybe (Extended s)
+fromRAddress addr =
+    let b58 = B58.decodeBase58 B58.rippleAlphabet
     in  b58 addr >>= \x -> case decode . BS.take 78 $ x of
             Left  _ -> Nothing
             Right a -> Just a
