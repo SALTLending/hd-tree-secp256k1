@@ -50,7 +50,7 @@ test (s, ps) = do
         
 
 testOne :: Seed -> (String, BS.ByteString, BS.ByteString) -> Spec
-testOne seed (dp, priv, pub) = do
+testOne seed (dp, priv, pub) = 
     describe ("derivation path: " ++ dp) $ do
         let keys = do
                 path <- parsePath dp
