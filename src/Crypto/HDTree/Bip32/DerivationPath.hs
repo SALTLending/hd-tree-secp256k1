@@ -39,8 +39,7 @@ path = do
     return Path{..}
 
 indexList :: Parser [Index]
-indexList = do
-    const [] <$> eof <|> do
+indexList = const [] <$> eof <|> do
         _ <- char '/'
         (Index idx) <- index
         offset <- option 0 $ const 0x80000000 <$> char '\''

@@ -271,7 +271,7 @@ isValidXrpAccountAddr =
    isB58Char      = flip elem . B8.unpack $ B58.unAlphabet B58.rippleAlphabet
    isBase58       = all isB58Char . B8.unpack . unXrpAddr
    validVersionByte =
-     flip elem ("0" :: String) . head . B8.unpack . unXrpAddr
+     flip elem ("r" :: String) . head . B8.unpack . unXrpAddr
 
 ltcConvertTo3Address :: LtcAddr -> Maybe LtcAddr
 ltcConvertTo3Address addr = do
