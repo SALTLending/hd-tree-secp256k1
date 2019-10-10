@@ -148,10 +148,10 @@ base58check v d =
   B58.encodeBase58 B58.bitcoinAlphabet $ encode v <> BA.convert d <> checksum
   where checksum = BS.take 4 . BA.convert . hash256 $ encode v <> BA.convert d
 
-rippleBase58check :: HashAlgorithm a => Digest a -> ByteString
+rippleBase58check :: ByteString -> ByteString
 rippleBase58check payload =
   B58.encodeBase58 B58.rippleAlphabet $ BA.convert payload <> checksum
-  where checksum = BS.take 4 . BA.convert . hash256 $ BA.convert payload
+  where checksum = BS.take 4 . BA.convert $ hash256 payload
   
 verifyBtcChecksum :: BtcAddr -> Bool
 verifyBtcChecksum addr = case (payload', checksum') of
