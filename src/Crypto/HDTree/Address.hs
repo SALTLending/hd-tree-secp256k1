@@ -14,7 +14,6 @@ import qualified Data.ByteString.Base58        as B58
 import qualified Data.ByteArray                as BA
 import           Data.Char
 import           Data.List
-import           Data.Monoid
 import           Data.Serialize
 import           Data.Word
 

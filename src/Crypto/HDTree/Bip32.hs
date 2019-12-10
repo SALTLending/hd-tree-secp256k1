@@ -57,7 +57,6 @@ import qualified Data.ByteString               as BS
 import qualified Data.ByteString.Base58        as B58
 import           Data.Either                    ( fromRight )
 import           Data.Serialize
-import           Data.Monoid
 import           Data.Word                      ( Word32 )
 
 import           Crypto.HDTree.Bip32.DerivationPath
